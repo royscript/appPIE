@@ -1,0 +1,192 @@
+<script type="text/babel">
+    'use strict';
+    class FormularioBitacoraDiaria extends React.Component{
+        state = {
+            alumnosPorCurso : this.props.alumnosPorCurso
+        }
+        constructor(props) {
+            super(props);
+            this.observacionesTextArea = '';
+        }
+
+        componentDidMount() {//Esto funciona cuando lso elementos del sitio web estan cargados
+            
+        }
+        componentWillReceiveProps(nextProps) {//El componente recibe una propiedad y ejecuta un código
+            if (nextProps.alumnosPorCurso !== this.props.alumnosPorCurso) {
+                this.setState({
+                    alumnosPorCurso : nextProps.alumnosPorCurso
+                });
+
+            }
+        }
+        componentDidUpdate(prevProps, prevState) {
+            
+        }
+        //Leer datos del formulario
+        fechaRegistro = React.createRef();
+        medioIntervencion = React.createRef();
+        observacion = React.createRef();
+        
+
+        crearRegistro = (e)=>{
+            //Prevenir el default para no enviar formulario en blanco
+            e.preventDefault();
+
+            //Validar
+            let validar = (mensajeError/*,elemento*/)=>{
+                
+                    bootbox.alert(mensajeError, function(){ 
+                        //document.querySelector(elemento).focus();
+                    });
+                
+            }
+            
+            if(this.medioIntervencion.current.value == ''){
+                validar("Seleccione la intervención");
+                return false;
+            }
+
+            if(this.observacionesTextArea == ''){
+                validar("Escriba la observación");
+                return false;
+            }
+            
+            if(this.fechaRegistro.current.value == ''){
+                validar("Escriba la fecha");
+                return false;
+            }
+            
+            //Desabilitamos los botones de guardar y cancelar
+            document.querySelector("#btnGuardar").disabled = true;
+            document.querySelector("#btnCancelar").disabled = true;
+
+            this.props.mostrarCargando("Guardando registro ...");
+            /**/
+            const hoy = new Date();
+            const fecha = hoy.getDate() +'/'+ (hoy.getMonth() +1) +'/'+ hoy.getFullYear();
+            const hora = hoy.getHours() +':'+ hoy.getMinutes() +':'+ hoy.getSeconds();
+            const fechaHora= fecha+' '+hora;
+            const idCaso = this.props.datosTraspasar.id;
+            if(this.props.contextoFormulario == 'agregar'){
+                //Crear el objeto con los datos
+                //El null representa al id que lo agregará el algoritmo de ingresar
+                
+                const bitacoraDiaria = [ 
+                                    null,
+                                    idCaso,
+                                    this.props.datosTraspasar.nombreCompleto,
+                                    this.medioIntervencion.current.value,
+                                    this.observacionesTextArea,
+                                    usuarioActual.email,
+                                    usuarioActual.nombreUsuario,
+                                    fechaHora,
+                                    null,
+                                    null,
+                                    null,
+                                    this.fechaRegistro.current.value
+                                ];
+                google.script.run.withFailureHandler(this.props.mostrarError).withSuccessHandler(this.props.obtenerDatos).agregarRegistro(bitacoraDiaria,"observaciones");
+            }else{
+                //Crear el objeto con los datos
+                //hay que poner los datos en el orden correcto del sheet, con excepcion del id
+                const bitacoraDiaria = [[ 
+                                    idCaso,
+                                    this.props.datosTraspasar.nombreCompleto,
+                                    this.medioIntervencion.current.value,
+                                    this.observacionesTextArea,
+                                    this.props.datosTraspasar.emailUsuario,
+                                    this.props.datosTraspasar.nombreUsuario,
+                                    this.props.datosTraspasar.fechaRegistro,
+                                    usuarioActual.email,
+                                    usuarioActual.nombreUsuario,
+                                    fechaHora,
+                                    this.fechaRegistro.current.value
+                                ]];
+                const id = this.props.datosFormulario.id;
+                google.script.run.withFailureHandler(this.props.mostrarError).withSuccessHandler(this.props.obtenerDatos).editarRegistro(id,bitacoraDiaria,"observaciones");
+            }
+                            
+            //Agregarlo y enviarlo a props
+            //this.props.guardarRegistro(alumno);
+            //resetear Formulario
+            e.currentTarget.reset();
+            
+        }  
+
+        transformarFecha(fecha){
+            let [dia, mes, ano]    = ( new Date(String(fecha)) ).toLocaleDateString().split("/");
+            if(mes<10) mes = String("0"+mes);
+            if(dia<10) dia = String("0"+dia);
+            return ano+'-'+mes+'-'+dia;
+        }
+
+        datosObservacion = (datos)=>{
+            this.observacionesTextArea = datos;
+        }
+
+        fechaActual=()=>{
+            let ahora = new Date();
+            return String(ahora.getFullYear()+'-'+(ahora.getMonth()+1).toString().padStart(2, '0')+'-'+ahora.getDate().toString().padStart(2, '0'));
+        }
+
+        render(){
+            return (
+                <React.Fragment>
+                    <form onSubmit={this.crearRegistro}>
+                        <div className="form-group row">
+                            <label htmlFor="validationCustomAlumno" className="col-sm-2 col-form-label">Profesional</label>
+                            <div className="col-sm-10">
+                                <input type="text" readOnly className="form-control-plaintext" defaultValue={this.props.contextoFormulario == 'agregar' ? usuarioActual.email : this.props.datosFormulario.emailUsuario}/>
+                            </div>
+                        </div>
+
+                        <div className="form-group row">
+                            <label htmlFor="validationCustomAlumno" className="col-sm-2 col-form-label">Fecha</label>
+                            <div className="col-sm-10">
+                                <input type="date" ref={this.fechaRegistro} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? this.fechaActual() : this.transformarFecha(this.props.datosFormulario.fechaIntervencion)}/>
+                            </div>
+                        </div>
+
+                        <div className="form-group row">
+                            <label htmlFor="validationCustomAlumno" className="col-sm-2 col-form-label">Medio de Intervención</label>
+                            <div className="col-sm-10">
+                                <select className="form-control" ref={this.medioIntervencion} defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.props.datosFormulario.medioIntervencion}>
+                                    <option>WHATSAPP</option>
+                                    <option>LLAMADO TELEFONICO</option>
+                                    <option>ENTREVISTA PERSONAL</option>
+                                    <option>MAIL</option>
+                                    <option>COORDINACION ENTRE PROFESIONALES</option>
+                                    <option>ENTREVISTA CON EL APODERADO</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="form-group row">
+                            <label htmlFor="validationCustomAlumno" className="col-sm-2 col-form-label">Observación</label>
+                            <div className="col-sm-10">
+                                <CKEditor value={this.props.contextoFormulario == 'agregar' ? '' : this.props.datosFormulario.observacion}  onChange={this.datosObservacion}/>
+                                {this.props.contextoFormulario == 'agregar' ? '' : this.datosObservacion(this.props.datosFormulario.observacion)}
+                            </div>
+                        </div>
+
+                        
+
+                        <div className="btn-group" role="group" aria-label="Basic example">
+                            <button className="btn btn-secondary btn-danger" type="button" id="btnCancelar" onClick={function(){
+                                                                                                                                this.props.obtenerDatos();
+                                                                                                                                document.querySelector("#btnGuardar").disabled = true;
+                                                                                                                                document.querySelector("#btnCancelar").disabled = true;
+                                                                                                                            }.bind(this)}>
+                                Cancelar
+                            </button>
+                            <input className="btn btn-secondary btn-success" id="btnGuardar" type="submit" value={this.props.contextoFormulario == 'agregar' ? 'Guardar' : 'Editar'}/>
+                        </div>
+                    </form>
+                    
+                </React.Fragment>
+            );
+        }
+    }
+
+</script>

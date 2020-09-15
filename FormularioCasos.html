@@ -1,0 +1,372 @@
+<script type="text/babel">
+    'use strict';
+    class FormularioCasos extends React.Component{
+        state = {
+            alumnosPorCurso : this.props.alumnosPorCurso
+        }
+        constructor(props) {
+            super(props);
+        }
+
+        componentDidMount() {//Esto funciona cuando lso elementos del sitio web estan cargados
+            this.optionsSelectAlumnos();
+            
+        }
+        componentWillReceiveProps(nextProps) {//El componente recibe una propiedad y ejecuta un código
+            if (nextProps.alumnosPorCurso !== this.props.alumnosPorCurso) {
+                this.setState({
+                    alumnosPorCurso : nextProps.alumnosPorCurso
+                });
+
+            }
+        }
+        componentDidUpdate(prevProps, prevState) {
+            
+        }
+        //Leer datos del formulario
+        alumno = React.createRef();
+        diagnostico = React.createRef();
+        fechaAutorizacion = React.createRef();
+        fechaAnamnesis = React.createRef();
+        informacionPedagogica = React.createRef();
+        informacionPsicologica = React.createRef();
+        informacionPsicopedagogica = React.createRef();
+        informacionSocial = React.createRef();
+        fuSalud = React.createRef();
+        fuFamilia = React.createRef();
+        fudei = React.createRef();
+        fuFamiliaDeCierre = React.createRef();
+        estado = React.createRef();
+        
+
+        crearRegistro = (e)=>{
+            //Prevenir el default para no enviar formulario en blanco
+            e.preventDefault();
+
+            //Validar
+            let validar = (mensajeError/*,elemento*/)=>{
+                
+                    bootbox.alert(mensajeError, function(){ 
+                        //document.querySelector(elemento).focus();
+                    });
+                
+            }
+            
+            if(this.diagnostico.current.value == ''){
+                validar("Escriba el nombre de la guía","#numeroGuia");
+                return false;
+            }
+
+            if(this.fechaAutorizacion.current.value == ''){
+                validar("Escriba la fecha de autorización");
+                return false;
+            }
+
+            if(this.fechaAnamnesis.current.value == ''){
+                validar("Escriba la fecha de anamnesis");
+                return false;
+            }
+
+            if(this.informacionPedagogica.current.value == ''){
+                validar("Escriba la fecha de informacion Pedagogica");
+                return false;
+            }
+
+            /*if(this.informacionPsicologica.current.value == ''){
+                validar("Escriba la fecha de informacion Psicologica");
+                return false;
+            }*/
+
+            if(this.informacionPsicopedagogica.current.value == ''){
+                validar("Escriba la fecha de informacion Psipedagógica");
+                return false;
+            }
+
+            if(this.fuSalud.current.value == ''){
+                validar("Escriba la fecha de FU SALUD");
+                return false;
+            }
+
+            if(this.fuFamilia.current.value == ''){
+                validar("Escriba la fecha de FU FAMILIA");
+                return false;
+            }
+
+            if(this.fudei.current.value == ''){
+                validar("Escriba la fecha de FUDEI");
+                return false;
+            }
+
+            if(this.fuFamiliaDeCierre.current.value == ''){
+                validar("Escriba la fecha de FU FAMILIA CIERRE");
+                return false;
+            }
+
+            if(this.estado.current.value == ''){
+                validar("INGRESE EL ESTADO");
+                return false;
+            }
+
+            
+            
+            //Desabilitamos los botones de guardar y cancelar
+            document.querySelector("#btnGuardar").disabled = true;
+            document.querySelector("#btnCancelar").disabled = true;
+
+            this.props.mostrarCargando("Guardando registro ...");
+            /**/
+            const hoy = new Date();
+            const fecha = hoy.getDate() +'/'+ (hoy.getMonth() +1) +'/'+ hoy.getFullYear();
+            const hora = hoy.getHours() +':'+ hoy.getMinutes() +':'+ hoy.getSeconds();
+            const fechaHora= fecha+' '+hora;
+            
+            const obtenerCurso = (alumno,id)=>{
+                let cursoDelAlumno = '';
+                this.state.alumnosPorCurso.forEach(curso=>{
+                    let esElAlumno = false;
+                    curso.alumnos.forEach(data=>{
+                        if(data.nombreCompleto == alumno && data.id == id){
+                            esElAlumno = true;
+                        } 
+                    });
+                    if(esElAlumno==true){
+                        cursoDelAlumno = curso.curso;
+                    }
+                });
+                return cursoDelAlumno;
+            }
+            
+            let idAlumno = $("#selectAlumnos").val();
+            let nombresAlumno = $('#selectAlumnos :selected').text();
+            let cursoAlumno = obtenerCurso(nombresAlumno,idAlumno);
+            
+            if(this.props.contextoFormulario == 'agregar'){
+                //Crear el objeto con los datos
+                //El null representa al id que lo agregará el algoritmo de ingresar
+                
+                const alumno = [ 
+                                    null,
+                                    idAlumno, 
+                                    nombresAlumno,
+                                    this.diagnostico.current.value,
+                                    this.fechaAutorizacion.current.value,
+                                    this.fechaAnamnesis.current.value,
+                                    this.informacionPedagogica.current.value,
+                                    this.informacionPsicologica.current.value,
+                                    this.informacionPsicopedagogica.current.value,
+                                    this.informacionSocial.current.value,
+                                    this.fuSalud.current.value,
+                                    this.fuFamilia.current.value,
+                                    this.fudei.current.value,
+                                    this.fuFamiliaDeCierre.current.value,
+                                    this.estado.current.value,
+                                    usuarioActual.email,
+                                    usuarioActual.nombreUsuario,
+                                    fechaHora,
+                                    null,
+                                    null,
+                                    null,
+                                    cursoAlumno
+                                ];
+                google.script.run.withFailureHandler(this.props.mostrarError).withSuccessHandler(this.props.obtenerDatos).agregarRegistro(alumno,"casos");
+            }else{
+                //Crear el objeto con los datos
+                //hay que poner los datos en el orden correcto del sheet, con excepcion del id
+                const alumno = [[ 
+                                    idAlumno, 
+                                    nombresAlumno,
+                                    this.diagnostico.current.value,
+                                    this.fechaAutorizacion.current.value,
+                                    this.fechaAnamnesis.current.value,
+                                    this.informacionPedagogica.current.value,
+                                    this.informacionPsicologica.current.value,
+                                    this.informacionPsicopedagogica.current.value,
+                                    this.informacionSocial.current.value,
+                                    this.fuSalud.current.value,
+                                    this.fuFamilia.current.value,
+                                    this.fudei.current.value,
+                                    this.fuFamiliaDeCierre.current.value,
+                                    this.estado.current.value,
+                                    this.props.datosFormulario.emailUsuario,
+                                    this.props.datosFormulario.nombreUsuario,
+                                    this.props.datosFormulario.fechaRegistro,
+                                    usuarioActual.email,
+                                    usuarioActual.nombreUsuario,
+                                    fechaHora,
+                                    cursoAlumno
+                                ]];
+                const id = this.props.datosFormulario.id;
+                google.script.run.withFailureHandler(this.props.mostrarError).withSuccessHandler(this.props.obtenerDatos).editarRegistro(id,alumno,"casos");
+            }
+                            
+            //Agregarlo y enviarlo a props
+            //this.props.guardarRegistro(alumno);
+            //resetear Formulario
+            e.currentTarget.reset();
+            
+        }  
+
+        transformarFecha(fecha){
+            let [dia, mes, ano]    = ( new Date(String(fecha)) ).toLocaleDateString().split("/");
+            if(mes<10) mes = String("0"+mes);
+            if(dia<10) dia = String("0"+dia);
+            return ano+'-'+mes+'-'+dia;
+        }
+
+        mostrarMesFecha(fecha){
+            let [dia, mes, ano]    = ( new Date(String(fecha)) ).toLocaleDateString().split("/");
+            if(mes<10) mes = String("0"+mes);
+            return ano+'-'+mes;
+        }
+
+        optionsSelectAlumnos(){
+            if(this.state.alumnosPorCurso.length>0){
+                let datosAlumnos = [];
+                let cursos = [];
+                this.state.alumnosPorCurso.forEach(curso=>{
+                    let alumnos = [];
+                    curso.alumnos.forEach(alumno=>{
+                        alumnos.push({
+                            id : alumno.id,
+                            text : alumno.nombreCompleto
+                        });
+                    });
+                    cursos.push({
+                        text : curso.curso,
+                        children : alumnos
+                    });
+                });
+                datosAlumnos = {
+                                "results": cursos
+                            };
+                //console.log(datosAlumnos);
+                $('#selectAlumnos').empty();
+                $('#selectAlumnos').html("");
+                $("#selectAlumnos").select2({ data: cursos });
+                if(this.props.contextoFormulario == 'editar'){
+                    //console.log("Editar");
+                    /*console.log(this.props.datosFormulario);*/
+                    
+                    $("#selectAlumnos").val(this.props.datosFormulario.idEstudiante);
+                    //$('#selectAlumnos :selected').text(this.props.datosFormulario.nombreCompleto);
+                    $("#selectAlumnos").select2();
+                }
+                
+            }else{
+                console.log();
+            }
+        }
+
+        render(){
+            this.optionsSelectAlumnos();
+            return (
+                <React.Fragment>
+                    <form onSubmit={this.crearRegistro}>
+                        <div className="form-row">
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomAlumno">Alumno*</label>
+                                <div className="input-group">
+                                    
+                                    <select id="selectAlumnos" className="form-control" data-placeholder="Choose one thing" data-allow-clear="1" title={this.props.contextoFormulario == 'agregar' ? '' : this.props.datosFormulario.nombreCompleto}>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomNumeroGuia">Diagnostico*</label>
+                                <div className="input-group">
+                                    <select className="form-control" ref={this.diagnostico} defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.props.datosFormulario.diagnostico}>
+                                        <option>DISCAPACIDAD INTELECTUAL</option>
+                                        <option>FUNCIONAMIENTO INTELECTUAL</option>
+                                        <option>DIFICULTAD ESPECIFICA DEL APRENDIZAJE</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">Fecha Autorización*</label>
+                                <input type="date" ref={this.fechaAutorizacion} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.transformarFecha(this.props.datosFormulario.fechaAutorizacion)}/>
+                            </div>
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">Fecha Anamnesis*</label>
+                                <input type="date" ref={this.fechaAnamnesis} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.transformarFecha(this.props.datosFormulario.fechaAnamnesis)}/>
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">Fecha Informe Pedagógico*</label>
+                                <input type="date" ref={this.informacionPedagogica} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.transformarFecha(this.props.datosFormulario.informacionPedagogica)}/>
+                            </div>
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">Fecha Informe Psicológico <b>(opcional)</b></label>
+                                <input type="date" ref={this.informacionPsicologica} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.transformarFecha(this.props.datosFormulario.informacionPsicologica)}/>
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">Fecha Informe Psicopedagógico*</label>
+                                <input type="date" ref={this.informacionPsicopedagogica} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.transformarFecha(this.props.datosFormulario.informacionPsicopedagogica)}/>
+                            </div>
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">Fecha Informe Social <b>(opcional)</b></label>
+                                <input type="date" ref={this.informacionSocial} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.transformarFecha(this.props.datosFormulario.informacionSocial)}/>
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">FU Salud* </label>
+                                <input type="date" ref={this.fuSalud} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.transformarFecha(this.props.datosFormulario.fuSalud)}/>
+                            </div>
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">FU Familia* </label>
+                                <input type="month" ref={this.fuFamilia} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.mostrarMesFecha(this.props.datosFormulario.fuFamilia)}/>
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">FUDEI*</label>
+                                <select id="fudei" className="form-control" ref={this.fudei} defaultValue={this.props.contextoFormulario == 'editar' ? this.props.datosFormulario.fudei : ''}>
+                                        <option>INGRESO</option>
+                                        <option>RE-EVALUACIÓN</option>
+                                </select>
+                            </div>
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">FU Familia Cierre*</label>
+                                <input type="month" ref={this.fuFamiliaDeCierre} className="form-control " defaultValue={this.props.contextoFormulario == 'agregar' ? '' : this.mostrarMesFecha(this.props.datosFormulario.fuFamiliaDeCierre)}/>
+                            </div>
+                        </div>
+                        <div className="form-row">
+                            <div className="col-md-6 mb-3">
+                                <label htmlFor="validationCustomFechaAutorizacion">Estado*</label>
+                                <select id="estado" className="form-control" ref={this.estado} defaultValue={this.props.contextoFormulario == 'editar' ? this.props.datosFormulario.estado : ''}>
+                                        <option>EN INTERVENCION</option>
+                                        <option>EGRESADO</option>
+                                        <option>DAR DE ALTA</option>
+                                </select>
+                            </div>
+                        </div>
+
+
+                        <div className="btn-group" role="group" aria-label="Basic example">
+                            <button className="btn btn-secondary btn-danger" type="button" id="btnCancelar" onClick={function(){
+                                                                                                                                this.props.obtenerDatos();
+                                                                                                                                document.querySelector("#btnGuardar").disabled = true;
+                                                                                                                                document.querySelector("#btnCancelar").disabled = true;
+                                                                                                                            }.bind(this)}>
+                                Cancelar
+                            </button>
+                            <input className="btn btn-secondary btn-success" id="btnGuardar" type="submit" value={this.props.contextoFormulario == 'agregar' ? 'Guardar' : 'Editar'}/>
+                        </div>
+                    </form>
+                    
+                </React.Fragment>
+            );
+        }
+    }
+
+</script>

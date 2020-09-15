@@ -1,0 +1,246 @@
+<script type="text/babel">
+    'use strict';
+class Fila extends React.Component{
+    constructor(props) {
+        super(props);
+    }
+    componentDidMount(){
+        if(this.props.activarPaginacion == true){
+            this.props.habilitarPaginacion();
+        }
+    }
+
+    render(){
+        const {id,alumno,numeroGuia} = this.props.datos;
+        const verSiPersonalizado = (registroDato,registroCabecera)=>{
+            if(typeof registroCabecera.mostrar === 'undefined'){
+                return registroDato[registroCabecera.nombreDato];
+            }else{
+                return registroCabecera.mostrar(registroDato);
+            }
+        }
+
+        return(
+            <tr>
+                {Object.keys(this.props.cabeceras).map(key=>(
+                    typeof this.props.cabeceras[key].estilo == 'undefined' ?
+                        <td key={key}>{verSiPersonalizado(this.props.datos,this.props.cabeceras[key])}</td>
+                    :   <td key={key} style={ this.props.cabeceras[key].estilo() }>{verSiPersonalizado(this.props.datos,this.props.cabeceras[key])}</td>
+                    ))}
+            </tr>
+        
+        );
+    }
+}
+
+class Tabla extends React.Component{
+    state = {
+        totalRegistros : this.props.totalRegistros,
+        cantidadPorPagina : this.props.cantidadPorPagina,
+        paginaActual : this.props.paginaActual,
+        cantidadPaginas : Math.ceil(this.props.totalRegistros/this.props.cantidadPorPagina),
+        desabilitarPaginador : false
+    };
+    constructor(props) {
+        super(props);
+        this.refrescarTabla = this.refrescarTabla.bind(this);
+    }
+    componentDidMount(){
+        
+    }
+    
+    paginas = (totalRegistros,cantidadPorPagina)=>{
+            let cantidadPaginasAdelanteAtras = 2;
+            let paginas = [];
+            let totalPaginas = Math.ceil(totalRegistros/cantidadPorPagina);
+            if(typeof totalRegistros == 'undefined'){
+                return paginas;
+            }
+            let paginaInicio = parseInt(this.state.paginaActual) - cantidadPaginasAdelanteAtras;
+            if(paginaInicio<=0){
+                    paginaInicio = 1;
+            }
+            let paginaFinal = parseInt(this.state.paginaActual) + cantidadPaginasAdelanteAtras;
+            if(paginaFinal>totalPaginas){
+                paginaFinal = totalPaginas;
+            }
+            if(paginaInicio>1){
+                paginas.push({
+                    numero : 1,
+                    esPagina : true
+                });
+                paginas.push({
+                    numero : '...',
+                    esPagina : false
+                });
+            }
+            for(let x=paginaInicio;x<=paginaFinal;x++){
+                paginas.push({
+                    numero : x,
+                    esPagina : true
+                });
+            }
+            if(paginaFinal<totalPaginas){
+                paginas.push({
+                    numero : '...',
+                    esPagina : false
+                });
+                paginas.push({
+                    numero : totalPaginas,
+                    esPagina : true
+                });
+            }
+            return paginas;
+    }
+    
+    refrescarTabla(cantidadPorPagina,totalRegistros,paginaActual){
+        this.setState({
+            totalRegistros : totalRegistros,
+            cantidadPorPagina : cantidadPorPagina,
+            paginaActual : paginaActual,
+            cantidadPaginas : Math.ceil(totalRegistros/cantidadPorPagina),
+            desabilitarPaginador : true
+        });
+        this.props.obtenerDatos(cantidadPorPagina,paginaActual,this.buscador());
+    }
+
+    cambiarNumeroPaginas =()=>{
+        let cantidadPorPagina = document.querySelector("#cantidadPorPagina").value;
+        this.refrescarTabla(cantidadPorPagina,this.state.totalRegistros,this.state.paginaActual);
+    }
+    cambiarPagina = (numeroPagina)=>{
+        let cantidadPorPagina = document.querySelector("#cantidadPorPagina").value;
+        this.refrescarTabla(cantidadPorPagina,this.state.totalRegistros,numeroPagina);
+    }
+
+    paginaSiguiente = ()=>{
+        let cantidadPorPagina = document.querySelector("#cantidadPorPagina").value;
+        let cantidadRegistros = this.props.totalRegistros;
+        let cantidadMaximaPaginas = Math.ceil(cantidadRegistros / cantidadPorPagina);
+        if((parseInt(this.state.paginaActual)+1)<=cantidadMaximaPaginas && (parseInt(this.state.paginaActual)+1)>0){
+            this.refrescarTabla(cantidadPorPagina,this.state.totalRegistros,(parseInt(this.state.paginaActual)+1));
+        }
+    }
+
+    paginaAnterior = ()=>{
+        let cantidadPorPagina = document.querySelector("#cantidadPorPagina").value;
+        let cantidadRegistros = this.props.totalRegistros;
+        let cantidadMaximaPaginas = Math.ceil(cantidadRegistros / cantidadPorPagina);
+        if((parseInt(this.state.paginaActual)-1)<=cantidadMaximaPaginas && (parseInt(this.state.paginaActual)-1)>0){
+            this.refrescarTabla(cantidadPorPagina,this.state.totalRegistros,(parseInt(this.state.paginaActual)-1));
+        }
+    }
+
+    habilitarPaginacion =()=>{
+        this.setState({
+            desabilitarPaginador : false
+        });
+    }
+    
+    buscador=()=>{
+        let camposBuscar = [];
+        this.props.cabeceras.forEach(cabecera=>{
+            if(typeof cabecera.search === 'undefined'){
+                
+            }else{
+                if(document.querySelector("#"+'seach_'+cabecera.nombreDato).value!=''){
+                    camposBuscar.push({
+                        nombreCampo : cabecera.nombreDato,
+                        posicion : cabecera.posicion,
+                        valorCampo : document.querySelector("#"+'seach_'+cabecera.nombreDato).value
+                    });
+                }
+            }
+        });
+        console.log(camposBuscar);
+        return camposBuscar;
+    }
+    
+    pintarPagina = (paginas,key,desabilitarPaginador)=>{
+        if(paginas[key].esPagina==true){
+            return <li className={"page-item" + (paginas[key].numero == this.state.paginaActual ? ' active' : '')+(desabilitarPaginador())} key={key}><a className="page-link" role="button" onClick={()=>this.cambiarPagina(paginas[key].numero)}>{paginas[key].numero}</a></li>;
+        }else{
+            return <li className={"page-item disabled"} key={key}><a className="page-link" role="button">{paginas[key].numero}</a></li>;
+        }
+        
+    }
+    render(){
+        let cantidadRegistros = this.props.totalRegistros;
+        let cantidadPorPagina = this.state.cantidadPorPagina;
+        let paginas = this.paginas(cantidadRegistros,cantidadPorPagina);
+        let desabilitarPaginador = ()=> this.state.desabilitarPaginador  == true ? ' disabled' : '';
+        
+        return (
+            <React.Fragment>
+                {typeof this.props.datosSuperiores === 'undefined' ? '' : this.props.datosSuperiores()}
+                <div className="">
+                    <div style={{float : 'left'}}>
+                        Cantidad por página <select id="cantidadPorPagina" onChange={this.cambiarNumeroPaginas}>
+                            <option value="5" defaultValue>5</option>
+                            <option value="10">10</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    
+                    <div className="btn-group" style={{float : 'right', paddingRight : '5px'}} role="group" aria-label="Basic example">
+                        <button type="button" className="btn btn-secondary" onClick={()=> this.props.estadoMostrarFormularioAgregar()}>
+                            <svg width="1em" height="1em" viewBox="0 0 16 16" className="bi bi-plus" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path fillRule="evenodd" d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                            </svg>
+                            {" Agregar"}
+                        </button>
+                        <button type="button" id="btnRefrescarTabla" className="btn btn-secondary" onClick={()=> this.cambiarNumeroPaginas()}>
+                            <svg width="1em" height="1em" viewBox="0 0 16 16" className="bi bi-search" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path fillRule="evenodd" d="M10.442 10.442a1 1 0 0 1 1.415 0l3.85 3.85a1 1 0 0 1-1.414 1.415l-3.85-3.85a1 1 0 0 1 0-1.415z"/>
+                                <path fillRule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <br/>
+                <br/>
+                <table className="table table-hover">
+                    <thead>
+                        <tr>
+                            {Object.keys(this.props.cabeceras).map(key=>(
+                                <th key={key}>{this.props.cabeceras[key].titulo}</th>
+                            ))}
+                        </tr>
+                        <tr>
+                            {Object.keys(this.props.cabeceras).map(key=>(
+                                typeof this.props.cabeceras[key].search === 'undefined' ? <th key={key}></th> : <th key={key}>{this.props.cabeceras[key].search('seach_'+this.props.cabeceras[key].nombreDato)}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {Object.keys(this.props.datos).map((key,index)=>(
+                        <Fila 
+                                key={key}
+                                datos={this.props.datos[key]}
+                                cabeceras={this.props.cabeceras}
+                                habilitarPaginacion={this.habilitarPaginacion}
+                                activarPaginacion={parseInt(Object.keys(this.props.datos).length)-1 == parseInt(index) ? true : false}
+                        />
+                        ))}
+                    </tbody>
+                </table>
+                <div className="">
+                    <nav aria-label="Page navigation example" style={{float : 'left'}}>
+                        <ul className="pagination">
+                            <li className={"page-item"+(desabilitarPaginador())}><a className="page-link" role="button" onClick={()=>this.paginaAnterior()}>Anterior</a></li>
+                            {Object.keys(paginas).map(key=>(
+                                this.pintarPagina(paginas,key,desabilitarPaginador)
+                            ))}
+                            <li className={"page-item"+(desabilitarPaginador())}><a className="page-link" role="button" onClick={()=>this.paginaSiguiente()}>Siguiente</a></li>
+                        </ul>
+                    </nav>
+                    <div style={{float : 'right'}}>Total registros {cantidadRegistros}</div>
+                </div>
+                
+            </React.Fragment>
+        );
+    }
+}
+</script>

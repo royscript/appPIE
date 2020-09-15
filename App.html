@@ -1,0 +1,56 @@
+<script type="text/babel">
+'use strict';
+
+class App extends React.Component{
+    state = {
+        contenidoMostrar : 'casos',
+        datosTraspasar : []
+    };
+
+    
+    constructor(props) {
+        super(props);
+        this._isMounted = false;
+    }
+
+    componentDidMount(){
+        this._isMounted = true;
+    }
+
+    componentWillUnmount() {
+        this._isMounted = false;
+    }
+
+    mostrarBitacoraDiaria=(datos)=>{
+        this.setState({
+            contenidoMostrar : 'bitacoraDiaria',
+            datosTraspasar : datos
+        });
+    }
+
+    mostrarCasos =()=>{
+        this.setState({
+            contenidoMostrar : 'casos'
+        });
+    }
+    mostrar = ()=>{
+        if(this.state.contenidoMostrar=='casos'){
+            return <Casos 
+                            mostrarBitacoraDiaria={this.mostrarBitacoraDiaria}
+                            />
+        }else if(this.state.contenidoMostrar=='bitacoraDiaria'){
+            return <BitacoraDiaria 
+                                    mostrarCasos={this.mostrarCasos}
+                                    datosTraspasar={this.state.datosTraspasar}
+                                    />
+        }
+    }
+    render(){
+        return (
+            <React.Fragment>
+                {this.mostrar()}
+            </React.Fragment>
+        );
+    }
+}
+</script>

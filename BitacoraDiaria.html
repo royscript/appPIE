@@ -1,0 +1,379 @@
+<script type="text/babel">
+    'use strict';
+    
+    class BitacoraDiaria extends React.Component{
+        state = {
+            bodyContenidoMostrar : 'tablaCasos',
+            footerContenidoMostrar : '',
+            registros : {},
+            alumnosPorCurso : {}
+        };
+    
+        
+        constructor(props) {
+            super(props);
+            this._isMounted = false;
+            //Esto sirve para que en esta función se pueda acceder al state
+            this.cargarRegistros = this.cargarRegistros.bind(this);
+            this.cargando = this.cargando.bind(this);
+            this.mostrarError = this.mostrarError.bind(this);
+            this.totalRegistros = 0;
+            /*----------Configuracion de la tabla a mostrar-----------*/
+            this.datosConsultaSheet = [{
+                                        nombreDato : 'id',
+                                        posicion : 0
+                                    },{
+                                        nombreDato : 'idCaso',
+                                        posicion : 1
+                                    },{
+                                        nombreDato : 'nombreCompleto',
+                                        posicion : 2
+                                    },{
+                                        nombreDato : 'medioIntervencion',
+                                        posicion : 3
+                                    },{
+                                        nombreDato : 'observacion',
+                                        posicion : 4
+                                    },{
+                                        nombreDato : 'emailUsuario',
+                                        posicion : 5
+                                    },{
+                                        nombreDato : 'nombreUsuario',
+                                        posicion : 6
+                                    },{
+                                        nombreDato : 'fechaRegistro',
+                                        posicion : 7
+                                    },{
+                                        nombreDato : 'emailUsuarioModifica',
+                                        posicion : 8
+                                    },{
+                                        nombreDato : 'nombreUsuarioModifica',
+                                        posicion : 9
+                                    },{
+                                        nombreDato : 'fechaRegistroModifica',
+                                        posicion : 10
+                                    },{
+                                        nombreDato : 'fechaIntervencion',
+                                        posicion : 11
+                                    }];
+            this.personalizacionElementosTabla = [{
+                titulo : 'Fecha',
+                    nombreDato : 'fechaIntervencion',
+                    posicion : 11,
+                    mostrar : (valores)=>{
+                        let [date, month, year]    = ( new Date(String(valores.fechaIntervencion)) ).toLocaleDateString().split("/");
+                        if(month<10) month = String("0"+month);
+                        if(date<10) date = String("0"+date);
+                        return date+'/'+month+'/'+year;
+                    }
+                },{
+                    titulo : 'Profesional',
+                    nombreDato : 'nombreUsuario',
+                    posicion : 6,
+                    search : (nombreId)=>{
+                        return <input id={nombreId} type="search" className="form-control form-control-sm" placeholder="Buscar por profesional"/>;
+                    },
+                    mostrar : (valores)=>{
+                        return valores.nombreUsuario;
+                    }
+                },{
+                    titulo : 'Medio',
+                    nombreDato : 'medioIntervencion',
+                    posicion : 3,
+                    mostrar : (valores)=>{
+                        return valores.medioIntervencion;
+                    },
+                    search : (nombreId)=>{
+                        return <select id={nombreId} className="form-control form-control-sm">
+                                    <option value="">Seleccione</option>
+                                    <option>WHATSAPP</option>
+                                    <option>LLAMADO TELEFONICO</option>
+                                    <option>ENTREVISTA PERSONAL</option>
+                                    <option>MAIL</option>
+                                    <option>COORDINACION ENTRE PROFESIONALES</option>
+                                    <option>ENTREVISTA CON EL APODERADO</option>
+                                </select>;
+                    }
+                },{
+                    titulo : 'Acción',
+                    mostrar : (registros)=>{
+                        const eliminandoRegistro=(id)=>{
+                            const refrescar = ()=>{
+                                setTimeout(document.querySelector("#btnRefrescarTabla").click(), 500);
+                            }
+                            google.script.run.withFailureHandler(this.mostrarError).withSuccessHandler(refrescar).eliminarRegistro(id,"observaciones");
+                        }
+                        const eliminarRegistro = (registros)=>{
+                            
+                            /*var respuesta = confirm("¿Desea eliminar este registro? "+registros.alumno);
+                            if(respuesta==true){
+                                google.script.run.withFailureHandler(this.state.mostrarError).withSuccessHandler(this.state.obtenerDatos).eliminarRegistro(registros.id,"alumno");
+                            }*/
+                            bootbox.confirm({
+                                title: "¿Desea eliminar este registro?",
+                                message: `${registros.nombreCompleto}`,
+                                buttons: {
+                                    cancel: {
+                                        label: '<i class="fa fa-times"></i> Cancelar'
+                                    },
+                                    confirm: {
+                                        label: '<i class="fa fa-check"></i> Eliminar'
+                                    }
+                                },
+                                callback: function (result) {
+                                    if(result==true){
+                                        eliminandoRegistro(registros.id);
+                                    }
+                                }
+                            });
+                        }
+
+                        const mostrarResponsable = (registros)=>{
+                            const fechaFormateada = (fecha)=>{
+                                let dt = new Date(String(fecha));
+                                return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth()+1).toString().padStart(2, '0')}/${dt.getFullYear().toString().padStart(4, '0')} ${
+                                            dt.getHours().toString().padStart(2, '0')}:${
+                                            dt.getMinutes().toString().padStart(2, '0')}:${
+                                            dt.getSeconds().toString().padStart(2, '0')}`;
+                            }
+
+                            let fecha = fechaFormateada(registros.fechaRegistro);
+
+                            let fecha2 = '';
+                            if(registros.fechaRegistroModifica!=null && registros.fechaRegistroModifica!=''){
+                                fecha2 = fechaFormateada(registros.fechaRegistroModifica);
+                            }                
+                            
+                            bootbox.alert({
+                                title: "Responsable",
+                                message: `<b>INGRESO</b><br/>
+                                          <b>Nombre : </b> ${registros.nombreUsuario} <br/> 
+                                          <b>E-mail : </b> ${registros.emailUsuario} <br/> 
+                                          <b>Fecha Registro : </b> ${fecha}
+                                          <br/><br/>
+                                          <b>MODIFICACION</b><br/>
+                                          <b>Nombre : </b> ${registros.nombreUsuarioModifica} <br/> 
+                                          <b>E-mail : </b> ${registros.emailUsuarioModifica} <br/> 
+                                          <b>Fecha Registro : </b> ${fecha2}
+                                          `,
+                                size: 'large'
+                            });
+                        }
+                        /* boton eliminar
+                        <button type="button" className="btn btn-danger btn-sm" onClick={()=>eliminarRegistro(registros)}>
+                                        <svg width="1em" height="1em" viewBox="0 0 16 16" className="bi bi-trash-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                            <path fillRule="evenodd" d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5a.5.5 0 0 0-1 0v7a.5.5 0 0 0 1 0v-7z"/>
+                                        </svg>
+                                    </button>
+                        */
+                        return <div className="btn-group" style={{marginLeft : '5px'}} role="group" aria-label="Basic example">
+                                    <button type="button" className="btn btn-warning btn-sm" onClick={()=>this.estadoMostrarFormularioEditar(registros)}>
+                                        <svg width="1em" height="1em" viewBox="0 0 16 16" className="bi bi-pencil-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                            <path fillRule="evenodd" d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <button type="button" className="btn btn-info btn-sm" onClick={()=>mostrarResponsable(registros)}>
+                                        <svg width="1em" height="1em" viewBox="0 0 16 16" className="bi bi-layout-text-sidebar-reverse" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                            <path fillRule="evenodd" d="M2 1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm12-1a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12z"/>
+                                            <path fillRule="evenodd" d="M5 15V1H4v14h1zm8-11.5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h5a.5.5 0 0 0 .5-.5zm0 3a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h5a.5.5 0 0 0 .5-.5zm0 3a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h5a.5.5 0 0 0 .5-.5zm0 3a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h5a.5.5 0 0 0 .5-.5z"/>
+                                        </svg>
+                                    </button>
+                                </div>;
+                    }
+                }];
+            /*---------------Fin configuracion Tabla a mostrar--------*/
+        }
+
+        componentDidMount(){
+            this._isMounted = true;
+            this.obtenerDatos();
+        }
+
+        componentWillUnmount() {
+            this._isMounted = false;
+        }
+    
+        /*------Obtencion y carga de datos-------*/
+        cargarRegistros(datos){
+            //Limpiamos los registros
+            this.setState({
+                registros : {},
+                totalRegistros : datos.totalRegistros
+            });
+            //Agregamos nuevos registros en caso de existir
+            if(datos.totalRegistros>0){
+                datos.registros.forEach(reg=>{
+                    //agregar el registro al state
+                    this.guardarRegistro(reg);//Le creamos una llave única basada en los minutos, segundos, fecha.
+                });
+            }else{
+                this.estadoMostrarTabla();
+            }
+        }
+        
+        obtenerDatos=(cantidadPorPagina = 5, paginaActual = 1,camposBuscar = [])=>{
+            cantidadPorPagina = cantidadPorPagina == null ? 5 : cantidadPorPagina;
+            if(cantidadPorPagina==true){
+                cantidadPorPagina = 5
+            }
+            let nombreHoja = 'observaciones';
+            let cantidadColumnas = parseInt((Object.keys(this.datosConsultaSheet).length));
+            this.cargando("Cargando registros ... ");
+            //Consultamos todas las bitacoras que sean acorde al id del caso
+            let consultaBase = "SELECT * FROM ? WHERE [1] LIKE '%"+this.props.datosTraspasar.id+"%'";
+            google.script.run
+                            .withSuccessHandler(this.cargarRegistros)
+                            .obtenerDatos(cantidadPorPagina,paginaActual,nombreHoja,cantidadColumnas,this.datosConsultaSheet,camposBuscar,consultaBase);
+        }
+    
+        guardarRegistro = (alumno)=>{
+            //Tomar una copia del state actual, usamos sprade operator para copiar el json
+            const registros = {...this.state.registros};
+            //agregar el gasto al state
+            registros[`alumno${Date.now()}`] = alumno;//Le creamos una llave única basada en los minutos, segundos, fecha.
+            //ponerlo en el state
+            this.setState({
+                registros
+            });
+            //Mostrar Tabla despues de almacenar el registro
+            this.estadoMostrarTabla();
+        }
+    
+        /*------Fin Obtencion y carga de datos-------*/
+    
+        /*------Sección de estados elementos a mostrar------*/
+        /*-------------BODY--------------*/
+        estadoMostrarFormularioEditar=(registros)=>{
+            this.setState({
+                bodyContenidoMostrar : 'formularioCasos',
+                contextoFormulario : 'editar',
+                datosFormulario : registros,
+                footerContenidoMostrar : ''
+            });
+        }
+    
+        estadoMostrarFormularioAgregar=()=>{
+            this.setState({
+                bodyContenidoMostrar : 'formularioCasos',
+                contextoFormulario : 'agregar',
+                datosFormulario : [],
+                footerContenidoMostrar : ''
+            });
+        }
+    
+        estadoMostrarTabla(){
+            this.setState({
+                bodyContenidoMostrar : 'tablaCasos',
+                footerContenidoMostrar : ''
+            });
+        }
+        /*---------FIN BODY--------------*/
+        /*-------------FOOTER--------------*/
+        cargando(mensaje){
+            this.setState({
+                footerContenidoMostrar : 'cargando',
+                mensajeCargando : mensaje
+            });
+        }
+    
+        mostrarError(error){
+            this.setState({
+                footerContenidoMostrar : 'error',
+                mensajeError : error.message
+            });
+        }
+        /*---------FIN FOOTER--------------*/
+        /*------Fin Sección de estados elementos a mostrar------*/
+    
+        /*-----------Sección mostradores-------------*/
+        mostrarFooter(){
+            if(this.state.footerContenidoMostrar=='cargando'){
+                return <button className="btn btn-primary" type="button" disabled>
+                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            {" "+this.state.mensajeCargando}
+                        </button>;
+            }else if(this.state.footerContenidoMostrar=='error'){
+                return <div className="alert alert-danger" role="alert">
+                            {this.state.mensajeError}
+                        </div>;
+            }
+        }
+        mostrarContenido(){
+            if(this.state.bodyContenidoMostrar=='formularioCasos'){
+                return <FormularioBitacoraDiaria 
+                                    guardarRegistro={this.guardarRegistro} 
+                                    mostrarCargando={this.cargando} 
+                                    obtenerDatos={this.obtenerDatos} 
+                                    mostrarError={this.mostrarError}
+                                    estadoMostrarTabla={this.estadoMostrarTabla}
+                                    contextoFormulario={this.state.contextoFormulario}
+                                    datosFormulario={this.state.datosFormulario}
+                                    alumnosPorCurso={this.state.alumnosPorCurso}
+                                    datosTraspasar={this.props.datosTraspasar}
+                                    />
+            }else if(this.state.bodyContenidoMostrar=='tablaCasos'){
+                const datosSuperiores =()=> {
+                    return <form>
+                                <div className="card">
+                                    <div className="card-body" style={{textAlign: 'left'}}>
+                                        <div className="form-row">
+                                            <div className="col-md-4 mb-3">
+                                                <b>Alumno : </b> {this.props.datosTraspasar.nombreCompleto}
+                                            </div>
+                                            <div className="col-md-4 mb-3">
+                                                <b>Diagnostico : </b> {this.props.datosTraspasar.diagnostico}
+                                            </div>
+                                            <div className="col-md-4 mb-3">
+                                                <b>Curso : </b> {this.props.datosTraspasar.curso}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div><br /></div>
+                            </form>
+                };
+                return <Tabla 
+                                datos={this.state.registros}
+                                totalRegistros={this.state.totalRegistros}
+                                estadoMostrarFormularioAgregar={this.estadoMostrarFormularioAgregar}
+                                estadoMostrarFormularioEditar={this.estadoMostrarFormularioEditar}
+                                obtenerDatos={this.obtenerDatos}
+                                cabeceras={this.personalizacionElementosTabla}
+                                cantidadPorPagina={5}
+                                paginaActual={1}
+                                datosSuperiores={datosSuperiores}
+                                />;
+            }
+        }
+        /*-------Fin Sección mostradores-------------*/
+        render(){
+            return (
+                <React.Fragment>
+                    <div className="contenedorGrande">
+                        <br/>
+                        <div className="card text-center">
+                            <div className="card-header">
+                                <button type="button" className="btn btn-secondary btn-sm" style={{float : 'left'}} onClick={()=>this.props.mostrarCasos()}>
+                                    <svg width="1em" height="1em" viewBox="0 0 16 16" className="bi bi-box-arrow-in-left" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                        <path fillRule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0v-2z"/>
+                                        <path fillRule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
+                                    </svg>
+                                    {" "}
+                                     Volver a casos
+                                </button>  
+                                   <b>Seguimiento Individual</b>  
+                            </div>
+                            <div className="card-body">
+                                {this.mostrarContenido()}
+                            </div>
+                            <div className="card-footer text-muted">
+                                {this.mostrarFooter()}
+                            </div>
+                        </div>
+                    </div>
+                </React.Fragment>
+            );
+        }
+    }
+</script>

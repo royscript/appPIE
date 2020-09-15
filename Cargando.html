@@ -1,0 +1,16 @@
+<script type="text/babel">
+    'use strict';
+    class Cargando extends React.Component{
+        constructor(props){
+            super(props);
+        }
+        render(){
+            return (
+                <button className="btn btn-primary" type="button" disabled>
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {this.props.mensaje}
+                </button>
+            );
+        }
+    }
+</script>
